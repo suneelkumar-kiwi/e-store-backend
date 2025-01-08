@@ -1,39 +1,69 @@
+const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 const Product = require('../models/Product');
-const { uploadToCloudinary } = require('../utils/cloudinary');
 
-// Create new product
 const createProduct = async (req, res) => {
   try {
-    // Check if file exists in request
+    const { name, description, price, stock, category } = req.body;
+
+    // Validate input fields
+    if (!name || !description || !price) {
+      return res.status(400).json({ error: 'All fields are required, including an image.' });
+    }
+
+    // Validate price and stock
+    if (isNaN(price) || price <= 0) {
+      return res.status(400).json({ error: 'Price must be a positive number' });
+    }
+
+    if (isNaN(stock) || stock < 0) {
+      return res.status(400).json({ error: 'Stock must be a non-negative number' });
+    }
+
+    // Validate that an image was uploaded
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "Please upload an image"
-      });
+      return res.status(400).json({ error: 'An image file is required.' });
     }
 
     // Upload image to Cloudinary
-    const imageResult = await uploadToCloudinary(req.file);
+    const cloudinaryResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'photo',
+    });
 
-    // Create product with image URL
+    // Clean up uploaded file
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error('Error deleting temporary file:', err);
+    });
+
+    // Create product in database
     const product = await Product.create({
-      ...req.body,
-      image: imageResult.url,
-      imagePublicId: imageResult.public_id
+      category,
+      price: Number(price),
+      description,
+      name,
+      stock: Number(stock),
+      imageUrl: cloudinaryResult.secure_url,
     });
 
     res.status(201).json({
       success: true,
-      product
+      product,
     });
-
   } catch (error) {
+    // Clean up uploaded file in case of error
+    if (req.file) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting temporary file:', err);
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
+
 
 // Get all products
 const getProducts = async (req, res) => {

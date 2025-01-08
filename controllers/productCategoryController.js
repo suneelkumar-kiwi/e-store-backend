@@ -1,13 +1,44 @@
+const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 const ProductCategory = require('../models/ProductCategory');
 
 // Create new product category
 const createProductCategory = async (req, res) => {
   try {
-    const category = new ProductCategory(req.body);
-    const savedCategory = await category.save();
-    res.status(201).json(savedCategory);
+    const { name, description } = req.body;
+
+    // Upload image to Cloudinary
+    const cloudinaryResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'photo',
+    });
+
+    // Clean up uploaded file
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error('Error deleting temporary file:', err);
+    });
+
+    const category = await ProductCategory.create({
+      name,
+      description,
+      imageUrl: cloudinaryResult.secure_url,
+    });
+
+    res.status(201).json({
+      success: true,
+      category,
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    // Clean up uploaded file in case of error
+    if (req.file) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting temporary file:', err);
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -34,8 +65,8 @@ const getProductCategoryById = async (req, res) => {
   }
 };
 
-module.exports = { 
-  createProductCategory, 
-  getProductCategories, 
-  getProductCategoryById 
+module.exports = {
+  createProductCategory,
+  getProductCategories,
+  getProductCategoryById
 };

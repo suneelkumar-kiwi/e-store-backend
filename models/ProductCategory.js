@@ -11,9 +11,9 @@ const productCategorySchema = new mongoose.Schema({
     type: String,
     required: false
   },
-  isActive: {
-    type: Boolean,
-    default: true
+  imageUrl: {
+    type: String,
+    required: true
   },
   createdAt: {
     type: Date,
