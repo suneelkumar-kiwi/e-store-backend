@@ -45,7 +45,7 @@ const createProductCategory = async (req, res) => {
 // Get all product categories
 const getProductCategories = async (req, res) => {
   try {
-    const categories = await ProductCategory.find({ isActive: true });
+    const categories = await ProductCategory.find();
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });
